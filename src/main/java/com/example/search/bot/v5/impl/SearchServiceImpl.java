@@ -31,22 +31,18 @@ public class SearchServiceImpl implements SearchService {
     public Map<String, List<String>> buildInheritanceIndex(String projectPath, Pattern pattern) throws IOException, InterruptedException {
         List<String> files = fileReader.readFiles(projectPath);
 
-        // Start worker threads
         for (int i = 0; i < numWorkers; i++) {
             executorService.submit(new Worker(taskQueue, resultQueue, pattern, fileReader, lock));
         }
 
-        // Submit tasks
         for (String file : files) {
             taskQueue.put(file);
         }
 
-        // Add poison pills to stop workers
         for (int i = 0; i < numWorkers; i++) {
             taskQueue.put("POISON_PILL");
         }
 
-        // Collect results
         for (int i = 0; i < files.size(); i++) {
             Map<String, List<String>> result = resultQueue.take();
             result.forEach((key, value) -> {
@@ -56,6 +52,7 @@ public class SearchServiceImpl implements SearchService {
                 } finally {
                     lock.unlock();
                 }
+
             });
         }
 
